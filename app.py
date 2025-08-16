@@ -117,7 +117,14 @@ def convert_audio(input_path, output_path, output_format, quality='192k'):
         elif output_format == 'aac':
             cmd = ['ffmpeg', '-i', input_path, '-acodec', 'aac', '-ab', bitrate, '-y', output_path]
         elif output_format == 'ogg':
-            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'libvorbis', '-ab', bitrate, '-y', output_path]
+            # OGG/Vorbis doesn't support -ab parameter, use -q:a instead
+            quality_map_ogg = {
+                'high': '6',      # Higher quality = lower number
+                'medium': '4', 
+                'low': '2'
+            }
+            ogg_quality = quality_map_ogg.get(quality, '4')
+            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'libvorbis', '-q:a', ogg_quality, '-y', output_path]
         else:
             return False
             
