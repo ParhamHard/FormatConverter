@@ -5,10 +5,22 @@ services:
     build: .
     ports:
       - "8000:8000"
+    environment:
+      - FLASK_ENV=production
+      - MAX_FILE_SIZE=500MB
+      - ALLOWED_EXTENSIONS=mp3,wav,flac,aac,ogg,m4a,mp4,avi,mov,wmv,flv,mkv,webm,jpg,jpeg,png,gif,bmp,tiff,webp
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8000
     volumes:
       - ./uploads:/app/uploads
       - ./converted:/app/converted
-    environment:
-      - MAX_FILE_SIZE=500MB
-      - ALLOWED_EXTENSIONS=mp3,wav,flac,aac,ogg,m4a,mp4,avi,mov,wmv,flv,mkv,webm,jpg,jpeg,png,gif,bmp,tiff,webp
+      - ./temp:/app/temp
+      - ./logs:/app/logs
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

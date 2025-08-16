@@ -1,41 +1,57 @@
 #!/bin/bash
 
-# Universal Media Converter Startup Script
+# Media Converter Service Startup Script
 
-echo "🎵 Starting Universal Media Converter..."
+echo "🚀 Starting Media Converter Service..."
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    echo "❌ Docker is not running. Please start Docker first."
+# Check if virtual environment exists
+if [ -d "venv" ]; then
+    echo "📦 Activating virtual environment..."
+    source venv/bin/activate
+else
+    echo "📦 Creating virtual environment..."
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    echo "📦 Installing dependencies..."
+    pip install -r requirements.txt
+fi
+
+# Check if FFmpeg is available
+if ! command -v ffmpeg &> /dev/null; then
+    echo "❌ FFmpeg not found. Please install FFmpeg first:"
+    echo "   Ubuntu/Debian: sudo apt install ffmpeg libavcodec-extra"
+    echo "   CentOS/RHEL: sudo yum install epel-release && sudo yum install ffmpeg"
+    echo "   macOS: brew install ffmpeg"
     exit 1
 fi
 
-# Check if docker-compose is available
-if ! command -v docker-compose &> /dev/null; then
-    echo "❌ docker-compose is not installed. Please install it first."
-    exit 1
-fi
+echo "✅ FFmpeg found: $(ffmpeg -version | head -n1)"
 
 # Create necessary directories
-mkdir -p uploads converted
+echo "📁 Creating directories..."
+mkdir -p uploads converted temp logs
 
-# Start the service
-echo "🚀 Starting service with Docker Compose..."
-docker-compose up -d
+# Set permissions
+chmod 755 uploads converted temp logs
 
-# Wait a moment for the service to start
-sleep 5
-
-# Check if service is running
-if docker-compose ps | grep -q "Up"; then
-    echo "✅ Service is running successfully!"
-    echo "🌐 Web Interface: http://localhost:8000"
-    echo "🔍 Health Check: http://localhost:8000/api/health"
-    echo "📋 Supported Formats: http://localhost:8000/api/formats"
-    echo ""
-    echo "📊 Service Status:"
-    docker-compose ps
+# Check if running in development or production mode
+if [ "$1" = "dev" ]; then
+    echo "🔧 Starting in development mode..."
+    export FLASK_ENV=development
+    export FLASK_DEBUG=true
+    python main.py
 else
-    echo "❌ Service failed to start. Check logs with: docker-compose logs"
-    exit 1
+    echo "🚀 Starting in production mode..."
+    export FLASK_ENV=production
+    export FLASK_DEBUG=false
+    
+    # Check if gunicorn is available
+    if command -v gunicorn &> /dev/null; then
+        echo "🐳 Starting with Gunicorn..."
+        gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 300 src.wsgi:app
+    else
+        echo "🐍 Starting with Flask development server..."
+        python main.py
+    fi
 fi

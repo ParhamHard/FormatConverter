@@ -210,6 +210,59 @@
             background: #218838;
         }
 
+        .advanced-upload {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f3e5f5;
+            border: 1px solid #9c27b0;
+            border-radius: 10px;
+        }
+        
+        .advanced-upload h4 {
+            color: #7b1fa2;
+            margin-bottom: 15px;
+        }
+        
+        .path-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .path-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .path-input:focus {
+            outline: none;
+            border-color: #9c27b0;
+        }
+        
+        .path-button {
+            padding: 12px 20px;
+            background: #9c27b0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .path-button:hover {
+            background: #7b1fa2;
+        }
+        
+        .path-examples {
+            color: #666;
+            font-size: 12px;
+        }
+        
         .supported-formats {
             margin-top: 40px;
             padding: 20px;
@@ -277,6 +330,19 @@
                 <div class="upload-text">📁 Drop your file here or click to browse</div>
                 <div class="upload-subtext">Supports audio, video, and image files up to 500MB</div>
                 <input type="file" class="file-input" id="fileInput" accept="audio/*,video/*,image/*">
+            </div>
+            
+            <div class="advanced-upload">
+                <div class="path-input-section">
+                    <h4>🔧 Advanced: Convert from File Path</h4>
+                    <div class="path-input-group">
+                        <input type="text" id="filePath" placeholder="/path/to/your/file.mp4" class="path-input">
+                        <button onclick="uploadFromPath()" class="path-button">Convert from Path</button>
+                    </div>
+                    <div class="path-examples">
+                        <small>Examples: /home/user/videos/file.mp4, /media/drive/video.mp4</small>
+                    </div>
+                </div>
             </div>
             
             <div class="format-selector">
@@ -482,6 +548,77 @@
                 progressFill.style.width = '0%';
             }, 2000);
         });
+
+        // Function to handle path-based uploads
+        async function uploadFromPath() {
+            const filePath = document.getElementById('filePath').value.trim();
+            if (!filePath || !targetFormat.value) {
+                alert('Please enter a file path and select target format');
+                return;
+            }
+
+            // Show progress
+            progress.style.display = 'block';
+            convertBtn.disabled = true;
+            result.style.display = 'none';
+
+            // Simulate progress
+            let progressValue = 0;
+            const progressInterval = setInterval(() => {
+                progressValue += Math.random() * 15;
+                if (progressValue > 90) progressValue = 90;
+                progressFill.style.width = progressValue + '%';
+            }, 200);
+
+            try {
+                const response = await fetch('/api/convert-from-path', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        file_path: filePath,
+                        target_format: targetFormat.value,
+                        quality: quality.value
+                    })
+                });
+
+                const data = await response.json();
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                if (data.success) {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h4>✅ Conversion Successful!</h4>
+                        <p>${data.message}</p>
+                        <a href="${data.download_url}" class="download-btn" download>Download Converted File</a>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <h4>❌ Conversion Failed</h4>
+                        <p>${data.error}</p>
+                    `;
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h4>❌ Error</h4>
+                    <p>Network error occurred. Please try again.</p>
+                `;
+            }
+
+            result.style.display = 'block';
+            convertBtn.disabled = false;
+            
+            // Hide progress after a delay
+            setTimeout(() => {
+                progress.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 2000);
+        }
     </script>
 </body>
 </html>

@@ -282,7 +282,14 @@ def convert_file():
             else:
                 success = convert_video(input_path, output_path, target_format, quality)
         elif file_info['type'] == 'image':
-            success = convert_image(input_path, output_path, target_format, int(quality) if quality.isdigit() else 90)
+            # Map quality settings to numeric values for images
+            quality_map_image = {
+                'high': 95,
+                'medium': 85, 
+                'low': 75
+            }
+            image_quality = quality_map_image.get(quality, 85)
+            success = convert_image(input_path, output_path, target_format, image_quality)
         
         if success and os.path.exists(output_path):
             # Clean up input file
@@ -320,6 +327,81 @@ def get_supported_formats():
         'video': ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'],
         'image': ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp']
     })
+
+@app.route('/api/convert-from-path', methods=['POST'])
+def convert_from_path():
+    """Convert file from server file path"""
+    try:
+        data = request.get_json()
+        file_path = data.get('file_path')
+        target_format = data.get('target_format')
+        quality = data.get('quality', 'medium')
+        
+        if not file_path or not target_format:
+            return jsonify({'error': 'File path and target format required'}), 400
+        
+        # Security: Only allow safe directories
+        safe_directories = ['/home', '/media', '/mnt', '/tmp', os.getcwd()]
+        if not any(file_path.startswith(safe_dir) for safe_dir in safe_directories):
+            return jsonify({'error': 'File path not allowed for security reasons'}), 403
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        # Check if file is readable
+        if not os.access(file_path, os.R_OK):
+            return jsonify({'error': 'File not readable'}), 403
+        
+        # Generate unique filename
+        original_ext = file_path.rsplit('.', 1)[1].lower() if '.' in file_path else ''
+        unique_id = str(uuid.uuid4())
+        input_filename = f"{unique_id}.{original_ext}"
+        output_filename = f"{unique_id}.{target_format}"
+        
+        input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_filename)
+        output_path = os.path.join(app.config['CONVERTED_FOLDER'], output_filename)
+        
+        # Copy file to uploads directory
+        import shutil
+        shutil.copy2(file_path, input_path)
+        
+        # Get file info
+        file_info = get_file_info(input_path)
+        
+        # Determine conversion type and perform conversion
+        success = False
+        if file_info['type'] == 'audio':
+            success = convert_audio(input_path, output_path, target_format, quality)
+        elif file_info['type'] == 'video':
+            if target_format in ['mp3', 'wav', 'flac', 'aac', 'ogg']:
+                success = extract_audio_from_video(input_path, output_path, target_format, quality)
+            else:
+                success = convert_video(input_path, output_path, target_format, quality)
+        elif file_info['type'] == 'image':
+            quality_map_image = {
+                'high': 95,
+                'medium': 85, 
+                'low': 75
+            }
+            image_quality = quality_map_image.get(quality, 85)
+            success = convert_image(input_path, output_path, target_format, image_quality)
+        
+        if success and os.path.exists(output_path):
+            # Clean up input file
+            os.remove(input_path)
+            
+            return jsonify({
+                'success': True,
+                'message': 'File converted successfully',
+                'download_url': f'/api/download/{output_filename}',
+                'file_info': file_info
+            })
+        else:
+            return jsonify({'error': 'Conversion failed'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': f'Conversion error: {str(e)}'}), 500
 
 @app.route('/api/health')
 def health_check():
