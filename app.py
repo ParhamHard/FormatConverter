@@ -153,14 +153,25 @@ def convert_video(input_path, output_path, output_format, quality='medium'):
         preset = preset_map.get(quality, 'medium')
         
         if output_format == 'mp4':
-            ffmpeg.input(input_path).output(output_path, vcodec='libx264', acodec='aac', preset=preset).run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-preset', preset, '-y', output_path]
         elif output_format == 'avi':
-            ffmpeg.input(input_path).output(output_path, vcodec='libxvid', acodec='mp3').run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-vcodec', 'libxvid', '-acodec', 'mp3', '-y', output_path]
         elif output_format == 'mov':
-            ffmpeg.input(input_path).output(output_path, vcodec='libx264', acodec='aac').run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-y', output_path]
         elif output_format == 'webm':
-            ffmpeg.input(input_path).output(output_path, vcodec='libvpx', acodec='libvorbis').run(overwrite_output=True, quiet=True)
-        return True
+            cmd = ['ffmpeg', '-i', input_path, '-vcodec', 'libvpx', '-acodec', 'libvorbis', '-y', output_path]
+        else:
+            return False
+            
+        print(f"Running video conversion command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        print(f"FFmpeg return code: {result.returncode}")
+        if result.returncode == 0:
+            print(f"Video conversion successful: {output_path}")
+            return True
+        else:
+            print(f"FFmpeg error: {result.stderr}")
+            return False
     except Exception as e:
         print(f"Video conversion error: {e}")
         return False
@@ -168,13 +179,32 @@ def convert_video(input_path, output_path, output_format, quality='medium'):
 def extract_audio_from_video(input_path, output_path, output_format, quality='192k'):
     """Extract audio from video files"""
     try:
+        # Map quality settings to bitrates
+        quality_map = {
+            'high': '320k',
+            'medium': '192k', 
+            'low': '128k'
+        }
+        bitrate = quality_map.get(quality, '192k')
+        
         if output_format == 'mp3':
-            ffmpeg.input(input_path).output(output_path, vn=None, acodec='mp3', ab=quality).run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-vn', '-acodec', 'mp3', '-ab', bitrate, '-y', output_path]
         elif output_format == 'wav':
-            ffmpeg.input(input_path).output(output_path, vn=None, acodec='pcm_s16le').run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-vn', '-acodec', 'pcm_s16le', '-y', output_path]
         elif output_format == 'flac':
-            ffmpeg.input(input_path).output(output_path, vn=None, acodec='flac').run(overwrite_output=True, quiet=True)
-        return True
+            cmd = ['ffmpeg', '-i', input_path, '-vn', '-acodec', 'flac', '-y', output_path]
+        else:
+            return False
+            
+        print(f"Running audio extraction command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        print(f"FFmpeg return code: {result.returncode}")
+        if result.returncode == 0:
+            print(f"Audio extraction successful: {output_path}")
+            return True
+        else:
+            print(f"FFmpeg error: {result.stderr}")
+            return False
     except Exception as e:
         print(f"Audio extraction error: {e}")
         return False
@@ -183,12 +213,23 @@ def convert_image(input_path, output_path, output_format, quality=90):
     """Convert image files"""
     try:
         if output_format in ['jpg', 'jpeg']:
-            ffmpeg.input(input_path).output(output_path, q=f'v={quality}').run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-q:v', str(quality), '-y', output_path]
         elif output_format == 'png':
-            ffmpeg.input(input_path).output(output_path, pngcompression=9).run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-pngcompression', '9', '-y', output_path]
         elif output_format == 'webp':
-            ffmpeg.input(input_path).output(output_path, quality=quality).run(overwrite_output=True, quiet=True)
-        return True
+            cmd = ['ffmpeg', '-i', input_path, '-quality', str(quality), '-y', output_path]
+        else:
+            return False
+            
+        print(f"Running image conversion command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        print(f"FFmpeg return code: {result.returncode}")
+        if result.returncode == 0:
+            print(f"Image conversion successful: {output_path}")
+            return True
+        else:
+            print(f"FFmpeg error: {result.stderr}")
+            return False
     except Exception as e:
         print(f"Image conversion error: {e}")
         return False
