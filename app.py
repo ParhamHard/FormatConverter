@@ -119,7 +119,7 @@ def convert_image(input_path, output_path, output_format, quality=90):
     """Convert image files"""
     try:
         if output_format in ['jpg', 'jpeg']:
-            ffmpeg.input(input_path).output(output_path, q:v=quality).run(overwrite_output=True, quiet=True)
+            ffmpeg.input(input_path).output(output_path, q=f'v={quality}').run(overwrite_output=True, quiet=True)
         elif output_format == 'png':
             ffmpeg.input(input_path).output(output_path, pngcompression=9).run(overwrite_output=True, quiet=True)
         elif output_format == 'webp':
