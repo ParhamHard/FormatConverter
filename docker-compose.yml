@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  converter:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./converted:/app/converted
+    environment:
+      - MAX_FILE_SIZE=500MB
+      - ALLOWED_EXTENSIONS=mp3,wav,flac,aac,ogg,m4a,mp4,avi,mov,wmv,flv,mkv,webm,jpg,jpeg,png,gif,bmp,tiff,webp
+    restart: unless-stopped

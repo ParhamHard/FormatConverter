@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Media Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .converter {
+            padding: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #4facfe;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area i {
+            font-size: 3em;
+            color: #4facfe;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .format-selector {
+            margin-bottom: 30px;
+        }
+
+        .format-selector label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .format-selector select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+
+        .format-selector select:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .quality-selector {
+            margin-bottom: 30px;
+        }
+
+        .quality-selector label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .quality-selector select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+
+        .convert-btn {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+
+        .convert-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .supported-formats {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .supported-formats h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .format-category {
+            margin-bottom: 15px;
+        }
+
+        .format-category h4 {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .format-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .format-tag {
+            background: #4facfe;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .converter {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Universal Media Converter</h1>
+            <p>Convert audio, video, and image files to any format</p>
+        </div>
+        
+        <div class="converter">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-text">📁 Drop your file here or click to browse</div>
+                <div class="upload-subtext">Supports audio, video, and image files up to 500MB</div>
+                <input type="file" class="file-input" id="fileInput" accept="audio/*,video/*,image/*">
+            </div>
+            
+            <div class="format-selector">
+                <label for="targetFormat">Convert to:</label>
+                <select id="targetFormat">
+                    <option value="">Select target format...</option>
+                    <optgroup label="Audio Formats">
+                        <option value="mp3">MP3</option>
+                        <option value="wav">WAV</option>
+                        <option value="flac">FLAC</option>
+                        <option value="aac">AAC</option>
+                        <option value="ogg">OGG</option>
+                    </optgroup>
+                    <optgroup label="Video Formats">
+                        <option value="mp4">MP4</option>
+                        <option value="avi">AVI</option>
+                        <option value="mov">MOV</option>
+                        <option value="webm">WebM</option>
+                    </optgroup>
+                    <optgroup label="Image Formats">
+                        <option value="jpg">JPG</option>
+                        <option value="png">PNG</option>
+                        <option value="webp">WebP</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="quality-selector">
+                <label for="quality">Quality:</label>
+                <select id="quality">
+                    <option value="high">High Quality</option>
+                    <option value="medium" selected>Medium Quality</option>
+                    <option value="low">Low Quality</option>
+                </select>
+            </div>
+            
+            <button class="convert-btn" id="convertBtn" disabled>Convert File</button>
+            
+            <div class="progress" id="progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            
+            <div class="result" id="result"></div>
+        </div>
+        
+        <div class="supported-formats">
+            <h3>Supported Formats</h3>
+            <div class="format-category">
+                <h4>Audio</h4>
+                <div class="format-tags">
+                    <span class="format-tag">MP3</span>
+                    <span class="format-tag">WAV</span>
+                    <span class="format-tag">FLAC</span>
+                    <span class="format-tag">AAC</span>
+                    <span class="format-tag">OGG</span>
+                    <span class="format-tag">M4A</span>
+                </div>
+            </div>
+            <div class="format-category">
+                <h4>Video</h4>
+                <div class="format-tags">
+                    <span class="format-tag">MP4</span>
+                    <span class="format-tag">AVI</span>
+                    <span class="format-tag">MOV</span>
+                    <span class="format-tag">WMV</span>
+                    <span class="format-tag">FLV</span>
+                    <span class="format-tag">MKV</span>
+                    <span class="format-tag">WebM</span>
+                </div>
+            </div>
+            <div class="format-category">
+                <h4>Image</h4>
+                <div class="format-tags">
+                    <span class="format-tag">JPG</span>
+                    <span class="format-tag">PNG</span>
+                    <span class="format-tag">GIF</span>
+                    <span class="format-tag">BMP</span>
+                    <span class="format-tag">TIFF</span>
+                    <span class="format-tag">WebP</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const targetFormat = document.getElementById('targetFormat');
+        const quality = document.getElementById('quality');
+        const convertBtn = document.getElementById('convertBtn');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const result = document.getElementById('result');
+
+        let selectedFile = null;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+            uploadArea.innerHTML = `
+                <div class="upload-text">✅ ${file.name}</div>
+                <div class="upload-subtext">Size: ${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+            `;
+            updateConvertButton();
+        }
+
+        function updateConvertButton() {
+            convertBtn.disabled = !selectedFile || !targetFormat.value;
+        }
+
+        targetFormat.addEventListener('change', updateConvertButton);
+
+        convertBtn.addEventListener('click', async () => {
+            if (!selectedFile || !targetFormat.value) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('target_format', targetFormat.value);
+            formData.append('quality', quality.value);
+
+            // Show progress
+            progress.style.display = 'block';
+            convertBtn.disabled = true;
+            result.style.display = 'none';
+
+            // Simulate progress
+            let progressValue = 0;
+            const progressInterval = setInterval(() => {
+                progressValue += Math.random() * 15;
+                if (progressValue > 90) progressValue = 90;
+                progressFill.style.width = progressValue + '%';
+            }, 200);
+
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                if (data.success) {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h4>✅ Conversion Successful!</h4>
+                        <p>${data.message}</p>
+                        <a href="${data.download_url}" class="download-btn" download>Download Converted File</a>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <h4>❌ Conversion Failed</h4>
+                        <p>${data.error}</p>
+                    `;
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h4>❌ Error</h4>
+                    <p>Network error occurred. Please try again.</p>
+                `;
+            }
+
+            result.style.display = 'block';
+            convertBtn.disabled = false;
+            
+            // Hide progress after a delay
+            setTimeout(() => {
+                progress.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
