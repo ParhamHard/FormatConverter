@@ -29,37 +29,67 @@ def get_file_info(filepath):
     """Get basic file information"""
     try:
         if filepath.lower().endswith(('.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a')):
-            # Audio file
-            audio = File(filepath)
-            if audio:
-                duration = audio.info.length if hasattr(audio.info, 'length') else None
+            # Audio file - use mutagen for basic info
+            try:
+                audio = File(filepath)
+                if hasattr(audio, 'info') and audio.info:
+                    duration = audio.info.length if hasattr(audio.info, 'length') else None
+                    return {
+                        'type': 'audio',
+                        'duration': duration,
+                        'size': os.path.getsize(filepath)
+                    }
+                else:
+                    # Fallback to just file extension detection
+                    return {
+                        'type': 'audio',
+                        'size': os.path.getsize(filepath)
+                    }
+            except:
+                # Fallback to just file extension detection
                 return {
                     'type': 'audio',
-                    'duration': duration,
                     'size': os.path.getsize(filepath)
                 }
         elif filepath.lower().endswith(('.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm')):
-            # Video file
-            probe = ffmpeg.probe(filepath)
-            if probe:
-                video_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
-                audio_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'audio'), None)
+            # Video file - use ffprobe command
+            try:
+                cmd = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filepath]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    probe = json.loads(result.stdout)
+                    video_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+                    return {
+                        'type': 'video',
+                        'duration': float(probe['format']['duration']) if 'duration' in probe['format'] else None,
+                        'width': int(video_info['width']) if video_info else None,
+                        'height': int(video_info['height']) if video_info else None,
+                        'size': os.path.getsize(filepath)
+                    }
+            except:
+                # Fallback to just file extension detection
                 return {
                     'type': 'video',
-                    'duration': float(probe['format']['duration']) if 'duration' in probe['format'] else None,
-                    'width': int(video_info['width']) if video_info else None,
-                    'height': int(video_info['height']) if video_info else None,
                     'size': os.path.getsize(filepath)
                 }
         elif filepath.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp')):
-            # Image file
-            probe = ffmpeg.probe(filepath)
-            if probe:
-                video_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+            # Image file - use ffprobe command
+            try:
+                cmd = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filepath]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    probe = json.loads(result.stdout)
+                    video_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+                    return {
+                        'type': 'image',
+                        'width': int(video_info['width']) if video_info else None,
+                        'height': int(video_info['height']) if video_info else None,
+                        'size': os.path.getsize(filepath)
+                    }
+            except:
+                # Fallback to just file extension detection
                 return {
                     'type': 'image',
-                    'width': int(video_info['width']) if video_info else None,
-                    'height': int(video_info['height']) if video_info else None,
                     'size': os.path.getsize(filepath)
                 }
     except Exception as e:
@@ -70,17 +100,36 @@ def get_file_info(filepath):
 def convert_audio(input_path, output_path, output_format, quality='192k'):
     """Convert audio files"""
     try:
+        # Map quality settings to bitrates
+        quality_map = {
+            'high': '320k',
+            'medium': '192k', 
+            'low': '128k'
+        }
+        bitrate = quality_map.get(quality, '192k')
+        
         if output_format == 'mp3':
-            ffmpeg.input(input_path).output(output_path, acodec='mp3', ab=quality).run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'mp3', '-ab', bitrate, '-y', output_path]
         elif output_format == 'wav':
-            ffmpeg.input(input_path).output(output_path, acodec='pcm_s16le').run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'pcm_s16le', '-y', output_path]
         elif output_format == 'flac':
-            ffmpeg.input(input_path).output(output_path, acodec='flac').run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'flac', '-y', output_path]
         elif output_format == 'aac':
-            ffmpeg.input(input_path).output(output_path, acodec='aac', ab=quality).run(overwrite_output=True, quiet=True)
+            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'aac', '-ab', bitrate, '-y', output_path]
         elif output_format == 'ogg':
-            ffmpeg.input(input_path).output(output_path, acodec='libvorbis', ab=quality).run(overwrite_output=True, quiet=True)
-        return True
+            cmd = ['ffmpeg', '-i', input_path, '-acodec', 'libvorbis', '-ab', bitrate, '-y', output_path]
+        else:
+            return False
+            
+        print(f"Running command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        print(f"FFmpeg return code: {result.returncode}")
+        if result.returncode == 0:
+            print(f"Conversion successful: {output_path}")
+            return True
+        else:
+            print(f"FFmpeg error: {result.stderr}")
+            return False
     except Exception as e:
         print(f"Audio conversion error: {e}")
         return False
@@ -88,8 +137,16 @@ def convert_audio(input_path, output_path, output_format, quality='192k'):
 def convert_video(input_path, output_path, output_format, quality='medium'):
     """Convert video files"""
     try:
+        # Map quality settings to FFmpeg presets
+        preset_map = {
+            'high': 'slow',
+            'medium': 'medium',
+            'low': 'fast'
+        }
+        preset = preset_map.get(quality, 'medium')
+        
         if output_format == 'mp4':
-            ffmpeg.input(input_path).output(output_path, vcodec='libx264', acodec='aac', preset=quality).run(overwrite_output=True, quiet=True)
+            ffmpeg.input(input_path).output(output_path, vcodec='libx264', acodec='aac', preset=preset).run(overwrite_output=True, quiet=True)
         elif output_format == 'avi':
             ffmpeg.input(input_path).output(output_path, vcodec='libxvid', acodec='mp3').run(overwrite_output=True, quiet=True)
         elif output_format == 'mov':
